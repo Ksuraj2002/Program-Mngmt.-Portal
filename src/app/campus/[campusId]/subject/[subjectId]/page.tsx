@@ -16,15 +16,23 @@ function formatDate(value: string) {
   });
 }
 
+type EntryTypeFilter = "all" | "assignment" | "test";
+
 export default async function SubjectPage({
   params,
   searchParams,
 }: {
   params: Promise<{ campusId: string; subjectId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; type?: string; add?: string }>;
 }) {
   const { campusId, subjectId } = await params;
   const resolvedSearchParams = await searchParams;
+  const activeType: EntryTypeFilter =
+    resolvedSearchParams.type === "assignment" ||
+    resolvedSearchParams.type === "test"
+      ? resolvedSearchParams.type
+      : "all";
+  const showAddForm = resolvedSearchParams.add === "1";
   const { userId, profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -60,6 +68,14 @@ export default async function SubjectPage({
   const canManage = profile.role === "admin" || Boolean(mapping);
   const nameById = new Map((profiles || []).map((p) => [p.id, p.full_name]));
   const today = new Date().toISOString().slice(0, 10);
+  const filteredEntries = (entries || []).filter(
+    (entry) => activeType === "all" || entry.type === activeType
+  );
+
+  const filterHref = (type: EntryTypeFilter) =>
+    type === "all" ? "?" : `?type=${type}`;
+  const addFormHref = activeType === "all" ? "?add=1" : `?type=${activeType}&add=1`;
+  const closeFormHref = activeType === "all" ? "?" : `?type=${activeType}`;
 
   return (
     <>
@@ -84,21 +100,63 @@ export default async function SubjectPage({
           </p>
         )}
 
-        {canManage && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+            {(
+              [
+                ["all", "All"],
+                ["assignment", "Assignments"],
+                ["test", "Tests"],
+              ] as [EntryTypeFilter, string][]
+            ).map(([type, label]) => (
+              <Link
+                key={type}
+                href={filterHref(type)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  activeType === type
+                    ? "bg-brand-600 text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          {canManage && !showAddForm && (
+            <Link
+              href={addFormHref}
+              className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              + Add assignment / test
+            </Link>
+          )}
+        </div>
+
+        {canManage && showAddForm && (
           <form
             action={addEntry}
             className="mt-6 space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
           >
             <input type="hidden" name="campusId" value={campus.id} />
             <input type="hidden" name="subjectId" value={subject.id} />
+            <input type="hidden" name="returnType" value={activeType} />
 
-            <div className="border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-medium text-slate-900">
-                Add assignment / test
-              </h2>
-              <p className="text-sm text-slate-500">
-                Fill in the details below.
-              </p>
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-lg font-medium text-slate-900">
+                  Add assignment / test
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Fill in the details below.
+                </p>
+              </div>
+              <Link
+                href={closeFormHref}
+                className="text-sm text-slate-400 hover:text-slate-600"
+              >
+                Cancel
+              </Link>
             </div>
 
             <div>
@@ -108,7 +166,7 @@ export default async function SubjectPage({
               <select
                 name="type"
                 required
-                defaultValue="assignment"
+                defaultValue={activeType === "test" ? "test" : "assignment"}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               >
                 <option value="assignment">Assignment</option>
@@ -178,7 +236,7 @@ export default async function SubjectPage({
         )}
 
         <div className="mt-8 space-y-3">
-          {entries?.map((entry) => (
+          {filteredEntries.map((entry) => (
             <div
               key={entry.id}
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
@@ -234,9 +292,11 @@ export default async function SubjectPage({
               </div>
             </div>
           ))}
-          {!entries?.length && (
+          {!filteredEntries.length && (
             <p className="text-sm text-slate-500">
-              No assignments or tests added yet.
+              {activeType === "all"
+                ? "No assignments or tests added yet."
+                : `No ${activeType}s added yet.`}
             </p>
           )}
         </div>

@@ -13,6 +13,8 @@ export async function addEntry(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const dueDate = String(formData.get("due_date"));
   const maxMarksRaw = String(formData.get("max_marks") || "").trim();
+  const returnType = String(formData.get("returnType") || "all");
+  const returnQuery = returnType === "all" ? "" : `?type=${returnType}`;
 
   if (!title || !dueDate || (type !== "assignment" && type !== "test")) {
     redirect(
@@ -44,6 +46,7 @@ export async function addEntry(formData: FormData) {
   }
 
   revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
+  redirect(`/campus/${campusId}/subject/${subjectId}${returnQuery}`);
 }
 
 export async function deleteEntry(formData: FormData) {
