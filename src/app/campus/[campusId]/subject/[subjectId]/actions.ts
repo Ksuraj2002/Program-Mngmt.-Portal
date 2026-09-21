@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import type { EntryType } from "@/types/database";
 
@@ -25,7 +26,11 @@ export async function addEntry(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
+  let createdBy = (await headers()).get("x-verified-user-id");
+  if (!createdBy) {
+    const { data: userData } = await supabase.auth.getUser();
+    createdBy = userData.user?.id ?? null;
+  }
 
   const { error } = await supabase.from("entries").insert({
     subject_id: subjectId,
@@ -34,7 +39,7 @@ export async function addEntry(formData: FormData) {
     description: description || null,
     due_date: dueDate,
     max_marks: maxMarksRaw ? Number(maxMarksRaw) : null,
-    created_by: userData.user?.id,
+    created_by: createdBy,
   });
 
   if (error) {

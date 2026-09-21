@@ -36,16 +36,10 @@ export default async function SubjectPage({
   const { userId, profile } = await requireProfile();
   const supabase = await createClient();
 
-  const { data: campus } = await supabase
-    .from("campuses")
-    .select("*")
-    .eq("id", campusId)
-    .single();
-  const { data: subject } = await supabase
-    .from("subjects")
-    .select("*")
-    .eq("id", subjectId)
-    .single();
+  const [{ data: campus }, { data: subject }] = await Promise.all([
+    supabase.from("campuses").select("*").eq("id", campusId).single(),
+    supabase.from("subjects").select("*").eq("id", subjectId).single(),
+  ]);
 
   if (!campus || !subject || subject.campus_id !== campus.id) notFound();
 
