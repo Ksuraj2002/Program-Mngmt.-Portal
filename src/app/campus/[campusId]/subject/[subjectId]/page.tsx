@@ -33,31 +33,35 @@ export default async function SubjectPage({
       ? resolvedSearchParams.type
       : "all";
   const showAddForm = resolvedSearchParams.add === "1";
-  const { userId, profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: campus }, { data: subject }] = await Promise.all([
+  const [
+    { userId, profile },
+    { data: campus },
+    { data: subject },
+    { data: profiles },
+  ] = await Promise.all([
+    requireProfile(),
     supabase.from("campuses").select("*").eq("id", campusId).single(),
     supabase.from("subjects").select("*").eq("id", subjectId).single(),
+    supabase.from("profiles").select("id, full_name"),
   ]);
 
   if (!campus || !subject || subject.campus_id !== campus.id) notFound();
 
-  const [{ data: entries }, { data: mapping }, { data: profiles }] =
-    await Promise.all([
-      supabase
-        .from("entries")
-        .select("*")
-        .eq("subject_id", subject.id)
-        .order("due_date", { ascending: true }),
-      supabase
-        .from("faculty_subjects")
-        .select("faculty_id")
-        .eq("subject_id", subject.id)
-        .eq("faculty_id", userId)
-        .maybeSingle(),
-      supabase.from("profiles").select("id, full_name"),
-    ]);
+  const [{ data: entries }, { data: mapping }] = await Promise.all([
+    supabase
+      .from("entries")
+      .select("*")
+      .eq("subject_id", subject.id)
+      .order("due_date", { ascending: true }),
+    supabase
+      .from("faculty_subjects")
+      .select("faculty_id")
+      .eq("subject_id", subject.id)
+      .eq("faculty_id", userId)
+      .maybeSingle(),
+  ]);
 
   const canManage = profile.role === "admin" || Boolean(mapping);
   const nameById = new Map((profiles || []).map((p) => [p.id, p.full_name]));

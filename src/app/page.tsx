@@ -4,13 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
 
 export default async function DashboardPage() {
-  const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const { data: campuses } = await supabase
-    .from("campuses")
-    .select("*")
-    .order("name");
+  const [{ profile }, { data: campuses }] = await Promise.all([
+    requireProfile(),
+    supabase.from("campuses").select("*").order("name"),
+  ]);
 
   return (
     <>

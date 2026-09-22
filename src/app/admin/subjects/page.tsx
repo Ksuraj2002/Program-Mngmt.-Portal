@@ -6,13 +6,14 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { addSubject, deleteSubject } from "./actions";
 
 export default async function AdminSubjectsPage() {
-  const { profile } = await requireAdmin();
   const supabase = await createClient();
 
-  const [{ data: campuses }, { data: subjects }] = await Promise.all([
-    supabase.from("campuses").select("*").order("name"),
-    supabase.from("subjects").select("*, campuses(name)").order("name"),
-  ]);
+  const [{ profile }, { data: campuses }, { data: subjects }] =
+    await Promise.all([
+      requireAdmin(),
+      supabase.from("campuses").select("*").order("name"),
+      supabase.from("subjects").select("*, campuses(name)").order("name"),
+    ]);
 
   return (
     <>

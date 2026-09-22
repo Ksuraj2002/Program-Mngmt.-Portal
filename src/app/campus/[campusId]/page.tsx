@@ -10,22 +10,20 @@ export default async function CampusPage({
   params: Promise<{ campusId: string }>;
 }) {
   const { campusId } = await params;
-  const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const { data: campus } = await supabase
-    .from("campuses")
-    .select("*")
-    .eq("id", campusId)
-    .single();
+  const [{ profile }, { data: campus }, { data: subjects }] =
+    await Promise.all([
+      requireProfile(),
+      supabase.from("campuses").select("*").eq("id", campusId).single(),
+      supabase
+        .from("subjects")
+        .select("*")
+        .eq("campus_id", campusId)
+        .order("name"),
+    ]);
 
   if (!campus) notFound();
-
-  const { data: subjects } = await supabase
-    .from("subjects")
-    .select("*")
-    .eq("campus_id", campus.id)
-    .order("name");
 
   return (
     <>

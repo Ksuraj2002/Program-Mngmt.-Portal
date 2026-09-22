@@ -21,15 +21,19 @@ export default async function AdminFacultyPage({
   }>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const { profile } = await requireAdmin();
   const supabase = await createClient();
 
-  const [{ data: profiles }, { data: subjects }, { data: mappings }] =
-    await Promise.all([
-      supabase.from("profiles").select("*").order("full_name"),
-      supabase.from("subjects").select("*, campuses(name)").order("name"),
-      supabase.from("faculty_subjects").select("*"),
-    ]);
+  const [
+    { profile },
+    { data: profiles },
+    { data: subjects },
+    { data: mappings },
+  ] = await Promise.all([
+    requireAdmin(),
+    supabase.from("profiles").select("*").order("full_name"),
+    supabase.from("subjects").select("*, campuses(name)").order("name"),
+    supabase.from("faculty_subjects").select("*"),
+  ]);
 
   const subjectsByFaculty = new Map<string, Set<string>>();
   mappings?.forEach((m) => {
