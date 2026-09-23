@@ -1,6 +1,45 @@
 export type Role = "admin" | "faculty";
 export type EntryType = "assignment" | "test";
 
+export type TrackerContest = {
+  id: string;
+  subject_id: string;
+  slug: string;
+  display_name: string | null;
+  lecture_cutoff_challenge_count: number | null;
+  last_fetched_at: string | null;
+  created_at: string;
+};
+
+export type TrackerChallenge = {
+  id: string;
+  contest_id: string;
+  hr_challenge_id: string;
+  name: string | null;
+  max_score: number;
+  sequence: number;
+};
+
+export type TrackerStudent = {
+  id: string;
+  campus_id: string;
+  subject_id: string;
+  name: string | null;
+  hackerrank_username: string;
+  created_at: string;
+};
+
+export type TrackerLeaderboardSnapshot = {
+  id: string;
+  contest_id: string;
+  hackerrank_username: string;
+  hackerrank_hacker_id: string | null;
+  total_score: number | null;
+  rank: number | null;
+  time_taken: number | null;
+  fetched_at: string;
+};
+
 export type Profile = {
   id: string;
   full_name: string;
@@ -118,6 +157,41 @@ export type Database = {
             referencedColumns: ["id"];
           }
         ];
+      };
+      tracker_contests: {
+        Row: TrackerContest;
+        Insert: Partial<TrackerContest> & { subject_id: string; slug: string };
+        Update: Partial<TrackerContest>;
+        Relationships: [];
+      };
+      tracker_challenges: {
+        Row: TrackerChallenge;
+        Insert: Partial<TrackerChallenge> & {
+          contest_id: string;
+          hr_challenge_id: string;
+          sequence: number;
+        };
+        Update: Partial<TrackerChallenge>;
+        Relationships: [];
+      };
+      tracker_students: {
+        Row: TrackerStudent;
+        Insert: Partial<TrackerStudent> & {
+          campus_id: string;
+          subject_id: string;
+          hackerrank_username: string;
+        };
+        Update: Partial<TrackerStudent>;
+        Relationships: [];
+      };
+      tracker_leaderboard_snapshots: {
+        Row: TrackerLeaderboardSnapshot;
+        Insert: Partial<TrackerLeaderboardSnapshot> & {
+          contest_id: string;
+          hackerrank_username: string;
+        };
+        Update: Partial<TrackerLeaderboardSnapshot>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

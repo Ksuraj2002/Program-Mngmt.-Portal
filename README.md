@@ -28,16 +28,17 @@ npm install
    key**, and **service_role key**.
 3. Copy `.env.local.example` to `.env.local` and fill in those three values.
 
-## 4. Run the database migration
+## 4. Run the database migrations
 
-Open the Supabase **SQL Editor** and run the contents of
-[`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+Open the Supabase **SQL Editor** and run, in order:
 
-This creates the `profiles`, `campuses`, `subjects`, `faculty_subjects`, and
-`entries` tables, sets up Row Level Security, seeds three placeholder
-campuses ("Campus 1/2/3" — rename them from `/admin/campuses`), and installs
-a trigger that auto-creates a `profiles` row (defaulting to role `faculty`)
-whenever a new auth user is created.
+1. [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) —
+   `profiles`, `campuses`, `subjects`, `faculty_subjects`, `entries`, RLS,
+   the auto-profile trigger, and three placeholder campuses.
+2. [`supabase/migrations/0002_tracker.sql`](supabase/migrations/0002_tracker.sql) —
+   the HackerRank tracker tables (`tracker_contests`, `tracker_challenges`,
+   `tracker_students`, `tracker_leaderboard_snapshots`), all admin-write /
+   authenticated-read.
 
 ## 5. Create the first admin account
 
@@ -82,6 +83,27 @@ Visit http://localhost:3000.
   admins and for faculty mapped to that specific subject — enforced both in
   the UI and at the database level via Postgres Row Level Security, so it
   holds even if someone calls the API directly.
+- **Tracker** (admin only): map HackerRank contests to subjects, add a
+  roster, paste an account cookie to bulk-refresh every contest under that
+  HackerRank account, and export per-contest or portfolio-wide leaderboards
+  as CSV/XLSX. Reuses the same campuses and subjects the portal already
+  manages — one source of truth. The paste-once cookie is used for the
+  outbound HackerRank call only and never persisted.
+
+### Migrating existing dashboard_app data
+
+If you're merging in data from the standalone `dashboard_app` (Flask):
+
+```bash
+export SUPABASE_URL="https://<project>.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="..."
+python scripts/migrate_dashboard_to_tpm.py \
+  --source-db /path/to/dashboard_app/dev.db
+```
+
+The script matches campuses/subjects by name against your existing rows
+(creating any missing ones), copies contests/challenges/rosters and the
+latest leaderboard snapshot per contest.
 
 ## Deploying
 

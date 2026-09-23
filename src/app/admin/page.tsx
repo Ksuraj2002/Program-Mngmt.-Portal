@@ -22,6 +22,12 @@ export default async function AdminHomePage() {
       description:
         "Create faculty accounts and assign them to the subjects they teach.",
     },
+    {
+      href: "/tracker",
+      title: "HackerRank tracker",
+      description:
+        "Map HackerRank contests to subjects, roster students, and view leaderboard rollups.",
+    },
   ];
 
   return (

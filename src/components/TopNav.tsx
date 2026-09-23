@@ -16,12 +16,20 @@ export function TopNav({ profile }: { profile: Profile }) {
             Campuses
           </Link>
           {profile.role === "admin" && (
-            <Link
-              href="/admin"
-              className="text-slate-600 hover:text-brand-700"
-            >
-              Admin
-            </Link>
+            <>
+              <Link
+                href="/tracker"
+                className="text-slate-600 hover:text-brand-700"
+              >
+                Tracker
+              </Link>
+              <Link
+                href="/admin"
+                className="text-slate-600 hover:text-brand-700"
+              >
+                Admin
+              </Link>
+            </>
           )}
           <span className="text-slate-400">
             {profile.full_name} · {profile.role}
