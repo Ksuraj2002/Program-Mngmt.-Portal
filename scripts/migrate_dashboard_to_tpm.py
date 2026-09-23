@@ -35,6 +35,7 @@ import json
 import os
 import sqlite3
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -61,7 +62,9 @@ class Supa:
     def _req(self, method, path, body=None, params=None, prefer=None):
         url = f"{self.url}/rest/v1{path}"
         if params:
-            qs = "&".join(f"{k}={v}" for k, v in params.items())
+            # PostgREST wants filter values URL-encoded; a raw space breaks
+            # urllib's URL validator before the request even goes out.
+            qs = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
             url = f"{url}?{qs}"
         data = None
         if body is not None:

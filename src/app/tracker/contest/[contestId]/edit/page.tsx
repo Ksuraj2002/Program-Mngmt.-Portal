@@ -17,30 +17,21 @@ export default async function EditContestPage({
   const { profile } = await requireAdmin();
   const supabase = await createClient();
 
-  const { data: contest } = await supabase
-    .from("tracker_contests")
-    .select("*")
-    .eq("id", contestId)
-    .single();
-  if (!contest) notFound();
-  const c = contest as TrackerContest;
-
-  const { data: subject } = await supabase
-    .from("subjects")
-    .select("*")
-    .eq("id", c.subject_id)
-    .single();
-  const s = subject as Subject | null;
-  const { data: campus } = s
-    ? await supabase
-        .from("campuses")
-        .select("*")
-        .eq("id", s.campus_id)
-        .single()
-    : { data: null };
-  const cm = campus as Campus | null;
-
-  const sp = await searchParams;
+  const [contestResp, sp] = await Promise.all([
+    supabase
+      .from("tracker_contests")
+      .select("*, subjects(*, campuses(*))")
+      .eq("id", contestId)
+      .single(),
+    searchParams,
+  ]);
+  if (!contestResp.data) notFound();
+  const contestRow = contestResp.data as TrackerContest & {
+    subjects: (Subject & { campuses: Campus | null }) | null;
+  };
+  const c = contestRow;
+  const s = contestRow.subjects;
+  const cm = s?.campuses ?? null;
 
   return (
     <>

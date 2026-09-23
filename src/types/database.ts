@@ -162,7 +162,15 @@ export type Database = {
         Row: TrackerContest;
         Insert: Partial<TrackerContest> & { subject_id: string; slug: string };
         Update: Partial<TrackerContest>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "tracker_contests_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       tracker_challenges: {
         Row: TrackerChallenge;
@@ -172,7 +180,15 @@ export type Database = {
           sequence: number;
         };
         Update: Partial<TrackerChallenge>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "tracker_challenges_contest_id_fkey";
+            columns: ["contest_id"];
+            isOneToOne: false;
+            referencedRelation: "tracker_contests";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       tracker_students: {
         Row: TrackerStudent;
@@ -182,7 +198,22 @@ export type Database = {
           hackerrank_username: string;
         };
         Update: Partial<TrackerStudent>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "tracker_students_campus_id_fkey";
+            columns: ["campus_id"];
+            isOneToOne: false;
+            referencedRelation: "campuses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tracker_students_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       tracker_leaderboard_snapshots: {
         Row: TrackerLeaderboardSnapshot;
@@ -191,7 +222,15 @@ export type Database = {
           hackerrank_username: string;
         };
         Update: Partial<TrackerLeaderboardSnapshot>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "tracker_leaderboard_snapshots_contest_id_fkey";
+            columns: ["contest_id"];
+            isOneToOne: false;
+            referencedRelation: "tracker_contests";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
     Views: Record<string, never>;

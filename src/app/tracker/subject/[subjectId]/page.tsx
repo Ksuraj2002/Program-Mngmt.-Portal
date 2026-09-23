@@ -36,7 +36,11 @@ export default async function TrackerSubjectPage({
 
   const [{ data: subject }, { data: contests }, { data: students }] =
     await Promise.all([
-      supabase.from("subjects").select("*").eq("id", subjectId).single(),
+      supabase
+        .from("subjects")
+        .select("*, campuses(*)")
+        .eq("id", subjectId)
+        .single(),
       supabase
         .from("tracker_contests")
         .select("*")
@@ -50,18 +54,15 @@ export default async function TrackerSubjectPage({
     ]);
 
   if (!subject) notFound();
-  const { data: campus } = await supabase
-    .from("campuses")
-    .select("*")
-    .eq("id", (subject as Subject).campus_id)
-    .single();
+  const subjectRow = subject as Subject & { campuses: Campus | null };
+  const campus = subjectRow.campuses;
   if (!campus) notFound();
 
   const params2 = await searchParams;
   const contestList = (contests ?? []) as TrackerContest[];
   const studentList = (students ?? []) as TrackerStudent[];
-  const c = campus as Campus;
-  const s = subject as Subject;
+  const c = campus;
+  const s = subjectRow;
 
   return (
     <>

@@ -7,7 +7,6 @@ import { loadContestMetrics } from "@/lib/tracker/queries";
 import type {
   Campus,
   Subject,
-  TrackerChallenge,
   TrackerContest,
 } from "@/types/database";
 import { fetchOneContest } from "./actions";
@@ -34,37 +33,28 @@ export default async function ContestDetailPage({
   const { profile } = await requireAdmin();
   const supabase = await createClient();
 
-  const { data: contest } = await supabase
-    .from("tracker_contests")
-    .select("*")
-    .eq("id", contestId)
-    .single();
-  if (!contest) notFound();
-  const c = contest as TrackerContest;
-
-  const { data: subject } = await supabase
-    .from("subjects")
-    .select("*")
-    .eq("id", c.subject_id)
-    .single();
-  if (!subject) notFound();
-  const s = subject as Subject;
-
-  const { data: campus } = await supabase
-    .from("campuses")
-    .select("*")
-    .eq("id", s.campus_id)
-    .single();
-  if (!campus) notFound();
-  const cm = campus as Campus;
-
-  const { data: challenges } = await supabase
-    .from("tracker_challenges")
-    .select("*")
-    .eq("contest_id", contestId);
-  const totalChallenges = ((challenges ?? []) as TrackerChallenge[]).length;
-
   const sp = await searchParams;
+
+  const [contestResp, challengesResp] = await Promise.all([
+    supabase
+      .from("tracker_contests")
+      .select("*, subjects(*, campuses(*))")
+      .eq("id", contestId)
+      .single(),
+    supabase
+      .from("tracker_challenges")
+      .select("id")
+      .eq("contest_id", contestId),
+  ]);
+  if (!contestResp.data) notFound();
+  const contestRow = contestResp.data as TrackerContest & {
+    subjects: (Subject & { campuses: Campus | null }) | null;
+  };
+  const c = contestRow;
+  const s = contestRow.subjects;
+  const cm = s?.campuses ?? null;
+  if (!s || !cm) notFound();
+  const totalChallenges = (challengesResp.data ?? []).length;
   let cutoffOverride: number | null | undefined = undefined;
   if (sp.cutoff !== undefined) {
     const raw = sp.cutoff.trim();
