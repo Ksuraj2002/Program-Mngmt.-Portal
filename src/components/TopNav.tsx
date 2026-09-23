@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Profile } from "@/types/database";
 import { signOut } from "@/app/auth/actions";
+import { PendingButton } from "@/components/PendingButton";
 
 export function TopNav({ profile }: { profile: Profile }) {
   return (
@@ -35,12 +36,12 @@ export function TopNav({ profile }: { profile: Profile }) {
             {profile.full_name} · {profile.role}
           </span>
           <form action={signOut}>
-            <button
-              type="submit"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+            <PendingButton
+              pendingLabel="Signing out…"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-70"
             >
               Sign out
-            </button>
+            </PendingButton>
           </form>
         </nav>
       </div>

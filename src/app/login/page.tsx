@@ -1,4 +1,5 @@
 import { signIn } from "@/app/auth/actions";
+import { PendingButton } from "@/components/PendingButton";
 
 export default async function LoginPage({
   searchParams,
@@ -52,12 +53,12 @@ export default async function LoginPage({
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          <PendingButton
+            pendingLabel="Signing in…"
+            className="w-full rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-brand-700/70"
           >
             Sign in
-          </button>
+          </PendingButton>
         </form>
 
         <p className="mt-6 text-xs text-slate-400">

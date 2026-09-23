@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signIn(formData: FormData) {
@@ -24,7 +23,10 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath("/", "layout");
+  // "local" scope clears the cookies without a network round trip to
+  // Supabase to revoke the refresh token. The user is fully signed out
+  // client-side either way — the refresh token they no longer hold can't
+  // be replayed.
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }
