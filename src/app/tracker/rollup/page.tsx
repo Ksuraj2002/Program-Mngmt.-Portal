@@ -2,12 +2,12 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
-import { loadTrackerAggregates, summarizeStat } from "@/lib/tracker/queries";
+import { loadTrackerAggregatesFast } from "@/lib/tracker/queries";
 
 export default async function RollupPage() {
   const { profile } = await requireAdmin();
   const supabase = await createClient();
-  const { subjectAggregates } = await loadTrackerAggregates(supabase);
+  const { subjectAggregatesFast } = await loadTrackerAggregatesFast(supabase);
 
   return (
     <>
@@ -40,29 +40,23 @@ export default async function RollupPage() {
               </tr>
             </thead>
             <tbody>
-              {subjectAggregates.map((row) => {
-                const s = summarizeStat(row.stat);
-                return (
-                  <tr
-                    key={row.subject.id}
-                    className="border-t border-slate-100"
-                  >
-                    <td className="py-2 pr-4">{row.campus.name}</td>
-                    <td className="py-2 pr-4 font-medium text-slate-900">
-                      {row.subject.name}
-                    </td>
-                    <td className="py-2 pr-4">{row.studentCount}</td>
-                    <td className="py-2 pr-4">{s.participants}</td>
-                    <td className="py-2 pr-4 font-semibold">
-                      {s.avg_pct_completion}%
-                    </td>
-                    <td className="py-2 pr-4">{s.avg_score}</td>
-                    <td className="py-2 pr-4">{s.top_score}</td>
-                    <td className="py-2 pr-4">{s.min_score}</td>
-                    <td className="py-2 pr-4">{s.median_score}</td>
-                  </tr>
-                );
-              })}
+              {subjectAggregatesFast.map(({ row, campus }) => (
+                <tr key={row.subject_id} className="border-t border-slate-100">
+                  <td className="py-2 pr-4">{campus.name}</td>
+                  <td className="py-2 pr-4 font-medium text-slate-900">
+                    {row.subject_name}
+                  </td>
+                  <td className="py-2 pr-4">{row.student_count}</td>
+                  <td className="py-2 pr-4">{row.participants}</td>
+                  <td className="py-2 pr-4 font-semibold">
+                    {row.avg_pct_completion}%
+                  </td>
+                  <td className="py-2 pr-4">{row.avg_score}</td>
+                  <td className="py-2 pr-4">{row.top_score}</td>
+                  <td className="py-2 pr-4">{row.min_score}</td>
+                  <td className="py-2 pr-4">{row.median_score}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </section>

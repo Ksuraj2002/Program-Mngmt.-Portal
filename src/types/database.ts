@@ -233,7 +233,24 @@ export type Database = {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      tracker_subject_aggregates: {
+        Row: {
+          subject_id: string;
+          campus_id: string;
+          subject_name: string;
+          student_count: number;
+          participants: number;
+          avg_score: number;
+          top_score: number;
+          min_score: number;
+          median_score: number;
+          avg_pct_completion: number;
+          contest_count: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       is_admin: {
         Args: Record<string, never>;

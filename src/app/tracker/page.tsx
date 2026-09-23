@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
-import { loadTrackerAggregates, summarizeStat } from "@/lib/tracker/queries";
+import { loadTrackerAggregatesFast } from "@/lib/tracker/queries";
 import { bulkFetchAccount } from "./actions";
 
 export default async function TrackerHomePage({
@@ -12,13 +12,8 @@ export default async function TrackerHomePage({
 }) {
   const { profile } = await requireAdmin();
   const supabase = await createClient();
-  const {
-    campusAggregates,
-    subjectAggregates,
-    accountCounts,
-  } = await loadTrackerAggregates(supabase);
-
-  const params = await searchParams;
+  const [{ campusAggregatesFast, subjectAggregatesFast, accountCounts }, params] =
+    await Promise.all([loadTrackerAggregatesFast(supabase), searchParams]);
 
   return (
     <>
@@ -59,7 +54,7 @@ export default async function TrackerHomePage({
 
         <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-medium text-slate-900">Campuses</h2>
-          {campusAggregates.length ? (
+          {campusAggregatesFast.length ? (
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -73,33 +68,30 @@ export default async function TrackerHomePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {campusAggregates.map((row) => {
-                    const s = summarizeStat(row.stat);
-                    return (
-                      <tr
-                        key={row.campus.id}
-                        className="border-t border-slate-100"
-                      >
-                        <td className="py-2 pr-4 font-medium text-slate-900">
-                          {row.campus.name}
-                        </td>
-                        <td className="py-2 pr-4">{row.subjectsCount}</td>
-                        <td className="py-2 pr-4">{row.studentCount}</td>
-                        <td className="py-2 pr-4 font-semibold">
-                          {s.avg_pct_completion}%
-                        </td>
-                        <td className="py-2 pr-4">{s.avg_score}</td>
-                        <td className="py-2 pr-4">
-                          <Link
-                            href={`/tracker/campus/${row.campus.id}`}
-                            className="text-brand-600"
-                          >
-                            Open →
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {campusAggregatesFast.map((row) => (
+                    <tr
+                      key={row.campus.id}
+                      className="border-t border-slate-100"
+                    >
+                      <td className="py-2 pr-4 font-medium text-slate-900">
+                        {row.campus.name}
+                      </td>
+                      <td className="py-2 pr-4">{row.subjectsCount}</td>
+                      <td className="py-2 pr-4">{row.studentCount}</td>
+                      <td className="py-2 pr-4 font-semibold">
+                        {row.avg_pct_completion}%
+                      </td>
+                      <td className="py-2 pr-4">{row.avg_score}</td>
+                      <td className="py-2 pr-4">
+                        <Link
+                          href={`/tracker/campus/${row.campus.id}`}
+                          className="text-brand-600"
+                        >
+                          Open →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -114,7 +106,7 @@ export default async function TrackerHomePage({
           )}
         </section>
 
-        {campusAggregates.length > 0 && (
+        {campusAggregatesFast.length > 0 && (
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-medium text-slate-900">Export</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -191,7 +183,7 @@ export default async function TrackerHomePage({
           </div>
         </section>
 
-        {subjectAggregates.length > 0 && (
+        {subjectAggregatesFast.length > 0 && (
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-medium text-slate-900">By subject</h2>
             <div className="mt-4 overflow-x-auto">
@@ -208,34 +200,31 @@ export default async function TrackerHomePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {subjectAggregates.map((row) => {
-                    const s = summarizeStat(row.stat);
-                    return (
-                      <tr
-                        key={row.subject.id}
-                        className="border-t border-slate-100"
-                      >
-                        <td className="py-2 pr-4">{row.campus.name}</td>
-                        <td className="py-2 pr-4 font-medium text-slate-900">
-                          {row.subject.name}
-                        </td>
-                        <td className="py-2 pr-4">{row.studentCount}</td>
-                        <td className="py-2 pr-4">{s.participants}</td>
-                        <td className="py-2 pr-4 font-semibold">
-                          {s.avg_pct_completion}%
-                        </td>
-                        <td className="py-2 pr-4">{s.avg_score}</td>
-                        <td className="py-2 pr-4">
-                          <Link
-                            href={`/tracker/subject/${row.subject.id}`}
-                            className="text-brand-600"
-                          >
-                            Open →
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {subjectAggregatesFast.map(({ row, campus }) => (
+                    <tr
+                      key={row.subject_id}
+                      className="border-t border-slate-100"
+                    >
+                      <td className="py-2 pr-4">{campus.name}</td>
+                      <td className="py-2 pr-4 font-medium text-slate-900">
+                        {row.subject_name}
+                      </td>
+                      <td className="py-2 pr-4">{row.student_count}</td>
+                      <td className="py-2 pr-4">{row.participants}</td>
+                      <td className="py-2 pr-4 font-semibold">
+                        {row.avg_pct_completion}%
+                      </td>
+                      <td className="py-2 pr-4">{row.avg_score}</td>
+                      <td className="py-2 pr-4">
+                        <Link
+                          href={`/tracker/subject/${row.subject_id}`}
+                          className="text-brand-600"
+                        >
+                          Open →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

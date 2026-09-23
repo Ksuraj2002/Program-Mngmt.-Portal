@@ -13,6 +13,154 @@ import type {
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 // ---------------------------------------------------------------------------
+// FAST PATH: read pre-aggregated per-subject stats straight out of the
+// tracker_subject_aggregates Postgres view. Used by the tracker landing page
+// and the rollup page — a single small query instead of pulling every
+// leaderboard snapshot and every challenge over the wire.
+// ---------------------------------------------------------------------------
+
+export type SubjectAggregateRow = {
+  subject_id: string;
+  campus_id: string;
+  subject_name: string;
+  student_count: number;
+  participants: number;
+  avg_score: number;
+  top_score: number;
+  min_score: number;
+  median_score: number;
+  avg_pct_completion: number;
+  contest_count: number;
+};
+
+export type CampusAggregateRow = {
+  campus: Campus;
+  subjectsCount: number;
+  studentCount: number;
+  participants: number;
+  avg_score: number;
+  top_score: number;
+  min_score: number;
+  median_score: number;
+  avg_pct_completion: number;
+};
+
+export async function loadTrackerAggregatesFast(supabase: SupabaseClient) {
+  const [{ data: campuses }, { data: subjectRows }, { data: contestSlugs }] =
+    await Promise.all([
+      supabase.from("campuses").select("*").order("name"),
+      supabase
+        .from("tracker_subject_aggregates")
+        .select("*")
+        .order("subject_name"),
+      supabase.from("tracker_contests").select("slug"),
+    ]);
+
+  const campusList = (campuses ?? []) as Campus[];
+  const subjectAggs = (subjectRows ?? []) as SubjectAggregateRow[];
+
+  const campusById = new Map(campusList.map((c) => [c.id, c] as const));
+
+  const subjectAggregatesFast = subjectAggs
+    .map((r) => ({ row: r, campus: campusById.get(r.campus_id) }))
+    .filter(
+      (x): x is { row: SubjectAggregateRow; campus: Campus } => !!x.campus
+    );
+
+  // Roll subject rows up to campus level. Cheap — one loop over ~10-20 rows.
+  const byCampus = new Map<
+    string,
+    {
+      campus: Campus;
+      subjectsCount: number;
+      studentCount: number;
+      participants: number;
+      scoreSum: number;
+      scoreCount: number;
+      pctSum: number;
+      pctCount: number;
+      top_score: number;
+      min_score: number;
+      medians: number[];
+    }
+  >();
+
+  for (const campus of campusList) {
+    byCampus.set(campus.id, {
+      campus,
+      subjectsCount: 0,
+      studentCount: 0,
+      participants: 0,
+      scoreSum: 0,
+      scoreCount: 0,
+      pctSum: 0,
+      pctCount: 0,
+      top_score: 0,
+      min_score: 0,
+      medians: [],
+    });
+  }
+
+  for (const { row, campus } of subjectAggregatesFast) {
+    const agg = byCampus.get(campus.id);
+    if (!agg) continue;
+    agg.subjectsCount += 1;
+    agg.studentCount += row.student_count;
+    agg.participants += row.participants;
+    if (row.participants > 0) {
+      agg.scoreSum += Number(row.avg_score) * row.participants;
+      agg.scoreCount += row.participants;
+      agg.pctSum += Number(row.avg_pct_completion) * row.participants;
+      agg.pctCount += row.participants;
+      agg.top_score = Math.max(agg.top_score, Number(row.top_score));
+      agg.min_score =
+        agg.min_score === 0
+          ? Number(row.min_score)
+          : Math.min(agg.min_score, Number(row.min_score));
+      agg.medians.push(Number(row.median_score));
+    }
+  }
+
+  const campusAggregatesFast: CampusAggregateRow[] = [];
+  for (const agg of byCampus.values()) {
+    campusAggregatesFast.push({
+      campus: agg.campus,
+      subjectsCount: agg.subjectsCount,
+      studentCount: agg.studentCount,
+      participants: agg.participants,
+      avg_score:
+        agg.scoreCount > 0
+          ? Math.round((agg.scoreSum / agg.scoreCount) * 10) / 10
+          : 0,
+      avg_pct_completion:
+        agg.pctCount > 0
+          ? Math.round((agg.pctSum / agg.pctCount) * 10) / 10
+          : 0,
+      top_score: agg.top_score,
+      min_score: agg.min_score,
+      median_score: agg.medians.length
+        ? Math.round(
+            (agg.medians.reduce((a, b) => a + b, 0) / agg.medians.length) * 10
+          ) / 10
+        : 0,
+    });
+  }
+  campusAggregatesFast.sort((a, b) => a.campus.name.localeCompare(b.campus.name));
+
+  const slugs = (contestSlugs ?? []) as { slug: string }[];
+  const accountCounts = HR_ACCOUNTS.map((account) => ({
+    account,
+    contestCount: slugs.filter((c) => contestAccount(c.slug) === account).length,
+  }));
+
+  return {
+    campusAggregatesFast,
+    subjectAggregatesFast,
+    accountCounts,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Contest-scoped metrics — the leaderboard rows for a single contest, using
 // its most recent fetch. Mirrors dashboard_app.load_contest_metrics.
 // ---------------------------------------------------------------------------
