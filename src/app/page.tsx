@@ -2,15 +2,12 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
-
-function formatDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { PendingEntryCard } from "@/components/PendingEntryCard";
+import {
+  approveEntry,
+  markEntryDone,
+  requestEntryChanges,
+} from "@/app/campus/[campusId]/subject/[subjectId]/actions";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -20,12 +17,15 @@ export default async function DashboardPage() {
     supabase.from("campuses").select("*").order("name"),
   ]);
 
+  const pendingStatuses: import("@/types/database").EntryStatus[] =
+    profile.role === "admin" ? ["pending"] : ["pending", "done_by_tpm"];
+
   let pendingQuery = supabase
     .from("entries")
     .select(
-      "id, subject_id, type, title, due_date, status, change_request, subjects!inner(id, name, campus_id, campuses!inner(id, name))"
+      "id, subject_id, type, title, due_date, status, change_request, submission_link, subjects!inner(id, name, campus_id, campuses!inner(id, name))"
     )
-    .eq("status", "pending")
+    .in("status", pendingStatuses)
     .order("due_date", { ascending: true });
 
   if (profile.role !== "admin") {
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
               <p className="mt-1 text-sm text-slate-500">
                 {profile.role === "admin"
                   ? "Assignments and tests that still need work from you."
-                  : "Assignments and tests still being prepared for your subjects."}
+                  : "Assignments and tests being prepared or awaiting your review."}
               </p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
@@ -75,35 +75,28 @@ export default async function DashboardPage() {
                 };
               }).subjects;
               return (
-                <Link
+                <PendingEntryCard
                   key={entry.id}
-                  href={`/campus/${subject.campus_id}/subject/${subject.id}`}
-                  className="block rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-brand-500 hover:shadow-md"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        entry.type === "test"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-brand-100 text-brand-700"
-                      }`}
-                    >
-                      {entry.type === "test" ? "Test" : "Assignment"}
-                    </span>
-                    {entry.change_request && (
-                      <span className="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Changes requested
-                      </span>
-                    )}
-                    <h3 className="text-base font-semibold text-slate-900">
-                      {entry.title}
-                    </h3>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {subject.campuses.name} · {subject.name} · Due{" "}
-                    {formatDate(entry.due_date)}
-                  </p>
-                </Link>
+                  entry={{
+                    id: entry.id,
+                    type: entry.type,
+                    title: entry.title,
+                    due_date: entry.due_date,
+                    status: entry.status,
+                    change_request: entry.change_request,
+                    submission_link: entry.submission_link,
+                    subject: {
+                      id: subject.id,
+                      name: subject.name,
+                      campus_id: subject.campus_id,
+                      campus_name: subject.campuses.name,
+                    },
+                  }}
+                  role={profile.role}
+                  markEntryDone={markEntryDone}
+                  approveEntry={approveEntry}
+                  requestEntryChanges={requestEntryChanges}
+                />
               );
             })}
             {!pendingEntries?.length && (

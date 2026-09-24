@@ -78,6 +78,7 @@ export type Entry = {
   max_marks: number | null;
   status: EntryStatus;
   change_request: string | null;
+  submission_link: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

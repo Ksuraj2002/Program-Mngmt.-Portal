@@ -44,6 +44,7 @@ function buildCopyText(entry: EntryView) {
   if (entry.max_marks != null) lines.push(`Max marks: ${entry.max_marks}`);
   if (entry.createdByName) lines.push(`Added by: ${entry.createdByName}`);
   lines.push(`Status: ${statusLabel(entry.status)}`);
+  if (entry.submission_link) lines.push(`Submitted link: ${entry.submission_link}`);
   if (entry.description) {
     lines.push("");
     lines.push(entry.description);
@@ -128,6 +129,7 @@ export function EntryList({
   const [activeType, setActiveType] = useState<EntryTypeFilter>(initialType);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [requestingChanges, setRequestingChanges] = useState<Record<string, boolean>>({});
+  const [markingDone, setMarkingDone] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(
     () =>
@@ -238,17 +240,18 @@ export function EntryList({
                 >
                   <CopyButton text={copyText} />
                   {isAdmin && entry.status === "pending" && (
-                    <form action={markEntryDone}>
-                      <input type="hidden" name="campusId" value={campusId} />
-                      <input type="hidden" name="subjectId" value={subjectId} />
-                      <input type="hidden" name="entryId" value={entry.id} />
-                      <button
-                        type="submit"
-                        className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                      >
-                        Mark as done
-                      </button>
-                    </form>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMarkingDone((prev) => ({
+                          ...prev,
+                          [entry.id]: !prev[entry.id],
+                        }))
+                      }
+                      className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                    >
+                      {markingDone[entry.id] ? "Cancel" : "Mark as done"}
+                    </button>
                   )}
                   {canManage && (
                     <form action={deleteEntry}>
@@ -289,6 +292,32 @@ export function EntryList({
                 </div>
               </div>
 
+              {isAdmin && entry.status === "pending" && markingDone[entry.id] && (
+                <form
+                  action={markEntryDone}
+                  className="mx-5 mb-4 space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-3"
+                >
+                  <input type="hidden" name="campusId" value={campusId} />
+                  <input type="hidden" name="subjectId" value={subjectId} />
+                  <input type="hidden" name="entryId" value={entry.id} />
+                  <label className="block text-xs font-medium text-slate-700">
+                    Attach a link (optional) — e.g. drive folder, doc URL
+                  </label>
+                  <input
+                    type="url"
+                    name="submission_link"
+                    placeholder="https://…"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                  >
+                    Submit for review
+                  </button>
+                </form>
+              )}
+
               {isOpen && (
                 <div className="border-t border-slate-100 px-5 py-4">
                   {entry.status === "pending" && entry.change_request && (
@@ -297,6 +326,22 @@ export function EntryList({
                       <p className="mt-1 whitespace-pre-wrap">
                         {entry.change_request}
                       </p>
+                    </div>
+                  )}
+
+                  {entry.submission_link && (
+                    <div className="mb-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                      <span className="font-medium text-slate-700">
+                        Submitted link:{" "}
+                      </span>
+                      <a
+                        href={entry.submission_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-brand-600 hover:underline"
+                      >
+                        {entry.submission_link}
+                      </a>
                     </div>
                   )}
 

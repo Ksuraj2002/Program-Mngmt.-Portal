@@ -80,11 +80,16 @@ export async function markEntryDone(formData: FormData) {
   const campusId = String(formData.get("campusId"));
   const subjectId = String(formData.get("subjectId"));
   const entryId = String(formData.get("entryId"));
+  const linkRaw = String(formData.get("submission_link") || "").trim();
 
   const supabase = await createClient();
   await supabase
     .from("entries")
-    .update({ status: "done_by_tpm", change_request: null })
+    .update({
+      status: "done_by_tpm",
+      change_request: null,
+      submission_link: linkRaw || null,
+    })
     .eq("id", entryId);
 
   revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
