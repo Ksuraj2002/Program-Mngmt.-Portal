@@ -13,6 +13,7 @@ export async function addEntry(formData: FormData) {
   const title = String(formData.get("title") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const dueDate = String(formData.get("due_date"));
+  const testDateRaw = String(formData.get("test_date") || "").trim();
   const maxMarksRaw = String(formData.get("max_marks") || "").trim();
   const returnType = String(formData.get("returnType") || "all");
   const returnQuery = returnType === "all" ? "" : `?type=${returnType}`;
@@ -21,6 +22,14 @@ export async function addEntry(formData: FormData) {
     redirect(
       `/campus/${campusId}/subject/${subjectId}?error=${encodeURIComponent(
         "Please fill in the type, title, and due date."
+      )}`
+    );
+  }
+
+  if (type === "test" && !testDateRaw) {
+    redirect(
+      `/campus/${campusId}/subject/${subjectId}?error=${encodeURIComponent(
+        "Please fill in the test date."
       )}`
     );
   }
@@ -38,6 +47,7 @@ export async function addEntry(formData: FormData) {
     title,
     description: description || null,
     due_date: dueDate,
+    test_date: type === "test" && testDateRaw ? testDateRaw : null,
     max_marks: maxMarksRaw ? Number(maxMarksRaw) : null,
     created_by: createdBy,
   });

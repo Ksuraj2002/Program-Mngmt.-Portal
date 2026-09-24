@@ -73,6 +73,7 @@ export type Entry = {
   title: string;
   description: string | null;
   due_date: string;
+  test_date: string | null;
   max_marks: number | null;
   created_by: string | null;
   created_at: string;

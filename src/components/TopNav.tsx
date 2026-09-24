@@ -5,7 +5,7 @@ import { PendingButton } from "@/components/PendingButton";
 
 export function TopNav({ profile }: { profile: Profile }) {
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-lg font-semibold text-brand-700">
