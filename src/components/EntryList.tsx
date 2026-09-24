@@ -237,6 +237,19 @@ export function EntryList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <CopyButton text={copyText} />
+                  {isAdmin && entry.status === "pending" && (
+                    <form action={markEntryDone}>
+                      <input type="hidden" name="campusId" value={campusId} />
+                      <input type="hidden" name="subjectId" value={subjectId} />
+                      <input type="hidden" name="entryId" value={entry.id} />
+                      <button
+                        type="submit"
+                        className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                      >
+                        Mark as done
+                      </button>
+                    </form>
+                  )}
                   {canManage && (
                     <form action={deleteEntry}>
                       <input type="hidden" name="campusId" value={campusId} />
@@ -298,55 +311,39 @@ export function EntryList({
                     </p>
                   )}
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    {isAdmin && entry.status === "pending" && (
-                      <form action={markEntryDone}>
+                  {isFaculty && entry.status === "done_by_tpm" && (
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <form action={approveEntry}>
                         <input type="hidden" name="campusId" value={campusId} />
-                        <input type="hidden" name="subjectId" value={subjectId} />
+                        <input
+                          type="hidden"
+                          name="subjectId"
+                          value={subjectId}
+                        />
                         <input type="hidden" name="entryId" value={entry.id} />
                         <button
                           type="submit"
-                          className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                          className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
                         >
-                          Mark as done
+                          Approve
                         </button>
                       </form>
-                    )}
-
-                    {isFaculty && entry.status === "done_by_tpm" && (
-                      <>
-                        <form action={approveEntry}>
-                          <input type="hidden" name="campusId" value={campusId} />
-                          <input
-                            type="hidden"
-                            name="subjectId"
-                            value={subjectId}
-                          />
-                          <input type="hidden" name="entryId" value={entry.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                          >
-                            Approve
-                          </button>
-                        </form>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setRequestingChanges((prev) => ({
-                              ...prev,
-                              [entry.id]: !prev[entry.id],
-                            }))
-                          }
-                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          {requestingChanges[entry.id]
-                            ? "Cancel"
-                            : "Request changes"}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRequestingChanges((prev) => ({
+                            ...prev,
+                            [entry.id]: !prev[entry.id],
+                          }))
+                        }
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        {requestingChanges[entry.id]
+                          ? "Cancel"
+                          : "Request changes"}
+                      </button>
+                    </div>
+                  )}
 
                   {isFaculty &&
                     entry.status === "done_by_tpm" &&
