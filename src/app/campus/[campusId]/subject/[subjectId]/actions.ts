@@ -73,4 +73,59 @@ export async function deleteEntry(formData: FormData) {
   await supabase.from("entries").delete().eq("id", entryId);
 
   revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
+  revalidatePath(`/`);
+}
+
+export async function markEntryDone(formData: FormData) {
+  const campusId = String(formData.get("campusId"));
+  const subjectId = String(formData.get("subjectId"));
+  const entryId = String(formData.get("entryId"));
+
+  const supabase = await createClient();
+  await supabase
+    .from("entries")
+    .update({ status: "done_by_tpm", change_request: null })
+    .eq("id", entryId);
+
+  revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
+  revalidatePath(`/`);
+}
+
+export async function approveEntry(formData: FormData) {
+  const campusId = String(formData.get("campusId"));
+  const subjectId = String(formData.get("subjectId"));
+  const entryId = String(formData.get("entryId"));
+
+  const supabase = await createClient();
+  await supabase
+    .from("entries")
+    .update({ status: "approved", change_request: null })
+    .eq("id", entryId);
+
+  revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
+  revalidatePath(`/`);
+}
+
+export async function requestEntryChanges(formData: FormData) {
+  const campusId = String(formData.get("campusId"));
+  const subjectId = String(formData.get("subjectId"));
+  const entryId = String(formData.get("entryId"));
+  const changes = String(formData.get("change_request") || "").trim();
+
+  if (!changes) {
+    redirect(
+      `/campus/${campusId}/subject/${subjectId}?error=${encodeURIComponent(
+        "Please describe the changes you'd like."
+      )}`
+    );
+  }
+
+  const supabase = await createClient();
+  await supabase
+    .from("entries")
+    .update({ status: "pending", change_request: changes })
+    .eq("id", entryId);
+
+  revalidatePath(`/campus/${campusId}/subject/${subjectId}`);
+  revalidatePath(`/`);
 }

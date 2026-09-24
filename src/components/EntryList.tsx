@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { Entry } from "@/types/database";
+import type { Entry, EntryStatus, Role } from "@/types/database";
 
 type EntryTypeFilter = "all" | "assignment" | "test";
 
@@ -20,6 +20,18 @@ function formatDate(value: string) {
   });
 }
 
+function statusLabel(status: EntryStatus): string {
+  if (status === "done_by_tpm") return "Under review by faculty";
+  if (status === "approved") return "Approved";
+  return "Pending";
+}
+
+function statusChipClass(status: EntryStatus): string {
+  if (status === "done_by_tpm") return "bg-yellow-100 text-yellow-800";
+  if (status === "approved") return "bg-emerald-100 text-emerald-800";
+  return "bg-slate-100 text-slate-700";
+}
+
 function buildCopyText(entry: EntryView) {
   const lines: string[] = [];
   lines.push(entry.title);
@@ -28,44 +40,94 @@ function buildCopyText(entry: EntryView) {
       entry.due_date
     )}`
   );
-  if (entry.test_date) {
-    lines.push(`Test date: ${formatDate(entry.test_date)}`);
-  }
-  if (entry.max_marks != null) {
-    lines.push(`Max marks: ${entry.max_marks}`);
-  }
-  if (entry.createdByName) {
-    lines.push(`Added by: ${entry.createdByName}`);
-  }
+  if (entry.test_date) lines.push(`Test date: ${formatDate(entry.test_date)}`);
+  if (entry.max_marks != null) lines.push(`Max marks: ${entry.max_marks}`);
+  if (entry.createdByName) lines.push(`Added by: ${entry.createdByName}`);
+  lines.push(`Status: ${statusLabel(entry.status)}`);
   if (entry.description) {
     lines.push("");
     lines.push(entry.description);
   }
+  if (entry.change_request) {
+    lines.push("");
+    lines.push(`Change request: ${entry.change_request}`);
+  }
   return lines.join("\n");
+}
+
+function CopyButton({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  async function handle(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      className={`inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 ${className}`}
+    >
+      <svg
+        className="h-3.5 w-3.5"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path d="M7 3a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V5a2 2 0 00-2-2H7z" />
+        <path d="M3 7a2 2 0 012-2v10a2 2 0 002 2h6a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+      </svg>
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
 }
 
 export function EntryList({
   entries,
   canManage,
+  role,
   campusId,
   subjectId,
   initialType,
   showAddButton,
   addFormHref,
   deleteEntry,
+  markEntryDone,
+  approveEntry,
+  requestEntryChanges,
 }: {
   entries: EntryView[];
   canManage: boolean;
+  role: Role;
   campusId: string;
   subjectId: string;
   initialType: EntryTypeFilter;
   showAddButton: boolean;
   addFormHref: string;
   deleteEntry: (formData: FormData) => Promise<void> | void;
+  markEntryDone: (formData: FormData) => Promise<void> | void;
+  approveEntry: (formData: FormData) => Promise<void> | void;
+  requestEntryChanges: (formData: FormData) => Promise<void> | void;
 }) {
   const [activeType, setActiveType] = useState<EntryTypeFilter>(initialType);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [requestingChanges, setRequestingChanges] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(
     () =>
@@ -79,23 +141,8 @@ export function EntryList({
     ["test", "Tests"],
   ];
 
-  async function handleCopy(entry: EntryView) {
-    const text = buildCopyText(entry);
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
-    setCopiedId(entry.id);
-    setTimeout(() => {
-      setCopiedId((current) => (current === entry.id ? null : current));
-    }, 1500);
-  }
+  const isAdmin = role === "admin";
+  const isFaculty = role === "faculty";
 
   return (
     <>
@@ -130,18 +177,29 @@ export function EntryList({
       <div className="mt-8 space-y-3">
         {filtered.map((entry) => {
           const isOpen = !!expanded[entry.id];
+          const copyText = buildCopyText(entry);
           return (
             <div
               key={entry.id}
               className="rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
             >
-              <button
-                type="button"
+              <div
                 onClick={() =>
                   setExpanded((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }))
                 }
-                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                className="flex w-full cursor-pointer items-start justify-between gap-3 px-5 py-4 text-left"
+                role="button"
                 aria-expanded={isOpen}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setExpanded((prev) => ({
+                      ...prev,
+                      [entry.id]: !prev[entry.id],
+                    }));
+                  }
+                }}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -153,6 +211,13 @@ export function EntryList({
                       }`}
                     >
                       {entry.type === "test" ? "Test" : "Assignment"}
+                    </span>
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusChipClass(
+                        entry.status
+                      )}`}
+                    >
+                      {statusLabel(entry.status)}
                     </span>
                     <h3 className="truncate text-base font-semibold text-slate-900">
                       {entry.title}
@@ -166,24 +231,62 @@ export function EntryList({
                     {entry.createdByName && ` · added by ${entry.createdByName}`}
                   </p>
                 </div>
-                <svg
-                  className={`h-5 w-5 flex-shrink-0 text-slate-400 transition-transform ${
-                    isOpen ? "rotate-180" : ""
-                  }`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden
+
+                <div
+                  className="flex flex-shrink-0 items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.4a.75.75 0 01-1.08 0l-4.25-4.4a.75.75 0 01.02-1.06z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+                  <CopyButton text={copyText} />
+                  {canManage && (
+                    <form action={deleteEntry}>
+                      <input type="hidden" name="campusId" value={campusId} />
+                      <input type="hidden" name="subjectId" value={subjectId} />
+                      <input type="hidden" name="entryId" value={entry.id} />
+                      <button
+                        type="submit"
+                        onClick={(e) => {
+                          if (
+                            !window.confirm(
+                              "Delete this entry? This cannot be undone."
+                            )
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  )}
+                  <svg
+                    className={`h-5 w-5 text-slate-400 transition-transform ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.4a.75.75 0 01-1.08 0l-4.25-4.4a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
 
               {isOpen && (
                 <div className="border-t border-slate-100 px-5 py-4">
+                  {entry.status === "pending" && entry.change_request && (
+                    <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      <p className="font-medium">Changes requested by faculty:</p>
+                      <p className="mt-1 whitespace-pre-wrap">
+                        {entry.change_request}
+                      </p>
+                    </div>
+                  )}
+
                   {entry.descriptionHtml ? (
                     <div
                       className="prose prose-sm max-w-none text-slate-700"
@@ -196,37 +299,83 @@ export function EntryList({
                   )}
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(entry)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <svg
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden
-                      >
-                        <path d="M7 3a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V5a2 2 0 00-2-2H7z" />
-                        <path d="M3 7a2 2 0 012-2v10a2 2 0 002 2h6a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                      </svg>
-                      {copiedId === entry.id ? "Copied!" : "Copy"}
-                    </button>
-
-                    {canManage && (
-                      <form action={deleteEntry}>
+                    {isAdmin && entry.status === "pending" && (
+                      <form action={markEntryDone}>
                         <input type="hidden" name="campusId" value={campusId} />
                         <input type="hidden" name="subjectId" value={subjectId} />
                         <input type="hidden" name="entryId" value={entry.id} />
                         <button
                           type="submit"
-                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
                         >
-                          Delete
+                          Mark as done
                         </button>
                       </form>
                     )}
+
+                    {isFaculty && entry.status === "done_by_tpm" && (
+                      <>
+                        <form action={approveEntry}>
+                          <input type="hidden" name="campusId" value={campusId} />
+                          <input
+                            type="hidden"
+                            name="subjectId"
+                            value={subjectId}
+                          />
+                          <input type="hidden" name="entryId" value={entry.id} />
+                          <button
+                            type="submit"
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                          >
+                            Approve
+                          </button>
+                        </form>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRequestingChanges((prev) => ({
+                              ...prev,
+                              [entry.id]: !prev[entry.id],
+                            }))
+                          }
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          {requestingChanges[entry.id]
+                            ? "Cancel"
+                            : "Request changes"}
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {isFaculty &&
+                    entry.status === "done_by_tpm" &&
+                    requestingChanges[entry.id] && (
+                      <form
+                        action={requestEntryChanges}
+                        className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3"
+                      >
+                        <input type="hidden" name="campusId" value={campusId} />
+                        <input type="hidden" name="subjectId" value={subjectId} />
+                        <input type="hidden" name="entryId" value={entry.id} />
+                        <label className="block text-xs font-medium text-slate-700">
+                          What changes are needed?
+                        </label>
+                        <textarea
+                          name="change_request"
+                          required
+                          rows={3}
+                          placeholder="Describe the changes you'd like the TPM to make."
+                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+                        >
+                          Send request
+                        </button>
+                      </form>
+                    )}
                 </div>
               )}
             </div>

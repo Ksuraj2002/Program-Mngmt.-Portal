@@ -6,7 +6,13 @@ import { TopNav } from "@/components/TopNav";
 import { AddEntryForm } from "@/components/AddEntryForm";
 import { EntryList } from "@/components/EntryList";
 import { renderMarkdown } from "@/lib/markdown";
-import { addEntry, deleteEntry } from "./actions";
+import {
+  addEntry,
+  deleteEntry,
+  markEntryDone,
+  approveEntry,
+  requestEntryChanges,
+} from "./actions";
 
 type EntryTypeFilter = "all" | "assignment" | "test";
 
@@ -107,12 +113,16 @@ export default async function SubjectPage({
         <EntryList
           entries={entryViews}
           canManage={canManage}
+          role={profile.role}
           campusId={campus.id}
           subjectId={subject.id}
           initialType={activeType}
           showAddButton={!showAddForm}
           addFormHref={addFormHref}
           deleteEntry={deleteEntry}
+          markEntryDone={markEntryDone}
+          approveEntry={approveEntry}
+          requestEntryChanges={requestEntryChanges}
         />
       </main>
     </>

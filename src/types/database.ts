@@ -1,5 +1,6 @@
 export type Role = "admin" | "faculty";
 export type EntryType = "assignment" | "test";
+export type EntryStatus = "pending" | "done_by_tpm" | "approved";
 
 export type TrackerContest = {
   id: string;
@@ -75,6 +76,8 @@ export type Entry = {
   due_date: string;
   test_date: string | null;
   max_marks: number | null;
+  status: EntryStatus;
+  change_request: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
