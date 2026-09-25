@@ -11,11 +11,7 @@ import {
   markRefreshError,
   markRefreshOk,
 } from "./credentials";
-import type {
-  Database,
-  TrackerChallenge,
-  TrackerContest,
-} from "@/types/database";
+import type { Database, TrackerContest } from "@/types/database";
 
 // Structurally accepts either the ssr server client or the admin service-role
 // client — both are SupabaseClient<Database> under the hood.
@@ -42,35 +38,19 @@ export async function refreshContest(
     unique.push(c);
   }
 
-  const { data: existing } = await supabase
-    .from("tracker_challenges")
-    .select("*")
-    .eq("contest_id", contest.id);
-
-  const byHrId = new Map(
-    ((existing ?? []) as TrackerChallenge[]).map((c) => [c.hr_challenge_id, c])
-  );
-
   const upserts: {
-    id?: string;
     contest_id: string;
     hr_challenge_id: string;
     name: string | null;
     max_score: number;
     sequence: number;
-  }[] = [];
-  unique.forEach((ch, idx) => {
-    const hrId = String(ch.id);
-    const existingRow = byHrId.get(hrId);
-    upserts.push({
-      id: existingRow?.id,
-      contest_id: contest.id,
-      hr_challenge_id: hrId,
-      name: ch.name ?? null,
-      max_score: Number(ch.max_score ?? 0),
-      sequence: idx,
-    });
-  });
+  }[] = unique.map((ch, idx) => ({
+    contest_id: contest.id,
+    hr_challenge_id: String(ch.id),
+    name: ch.name ?? null,
+    max_score: Number(ch.max_score ?? 0),
+    sequence: idx,
+  }));
 
   if (upserts.length) {
     const { error: chErr } = await supabase
