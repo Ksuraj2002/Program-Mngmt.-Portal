@@ -200,7 +200,11 @@ export default async function TrackerHomePage({
                     {cred?.last_refresh_ok_at
                       ? `Last successful refresh: ${new Date(
                           cred.last_refresh_ok_at
-                        ).toLocaleString()}`
+                        ).toLocaleString("en-IN", {
+                          timeZone: "Asia/Kolkata",
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })} IST`
                       : "No successful auto-refresh yet."}
                     {cred?.last_refresh_error && (
                       <>
