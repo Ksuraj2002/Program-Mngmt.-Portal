@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
 import { loadTrackerAggregatesFast } from "@/lib/tracker/queries";
 import { listCredentialStatus } from "@/lib/tracker/credentials";
+import { PendingButton } from "@/components/PendingButton";
 import { refreshAccountNowAction, saveHrCookieAction } from "./actions";
 
 export default async function TrackerHomePage({
@@ -225,12 +226,12 @@ export default async function TrackerHomePage({
                       }
                       className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs font-mono focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                     />
-                    <button
-                      type="submit"
-                      className="mt-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                    <PendingButton
+                      pendingLabel="Saving…"
+                      className="mt-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-brand-400 disabled:cursor-wait"
                     >
                       Save cookie
-                    </button>
+                    </PendingButton>
                   </form>
                   {hasCookie && a.contestCount > 0 && (
                     <form
@@ -238,12 +239,14 @@ export default async function TrackerHomePage({
                       className="mt-2"
                     >
                       <input type="hidden" name="account" value={a.account} />
-                      <button
-                        type="submit"
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                      <PendingButton
+                        pendingLabel={`Refreshing ${a.contestCount} contest${
+                          a.contestCount === 1 ? "" : "s"
+                        }… (this can take a few minutes)`}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-wait"
                       >
                         Refresh now using stored cookie
-                      </button>
+                      </PendingButton>
                     </form>
                   )}
                 </div>
