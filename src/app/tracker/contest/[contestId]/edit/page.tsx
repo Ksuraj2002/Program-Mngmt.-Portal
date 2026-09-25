@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
 import type { Campus, Subject, TrackerContest } from "@/types/database";
+import { HR_ACCOUNTS, inferAccountFromSlug } from "@/lib/tracker/account";
 import { updateContest } from "../actions";
 
 export default async function EditContestPage({
@@ -98,6 +99,33 @@ export default async function EditContestPage({
               defaultValue={c.display_name ?? ""}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              HackerRank account
+            </label>
+            <select
+              name="hr_account"
+              defaultValue={c.hr_account ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            >
+              <option value="">
+                Auto-detect from slug
+                {inferAccountFromSlug(c.slug)
+                  ? ` (currently: ${inferAccountFromSlug(c.slug)})`
+                  : " (currently: unassigned)"}
+              </option>
+              {HR_ACCOUNTS.map((acc) => (
+                <option key={acc} value={acc}>
+                  {acc} account
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Which HackerRank login owns this contest — determines whose
+              stored cookie the daily refresh uses. Leave on Auto if the slug
+              already contains &quot;101&quot; or &quot;301&quot;.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">

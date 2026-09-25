@@ -125,7 +125,7 @@ export async function refreshAccountFromStorage(
     .from("tracker_contests")
     .select("*");
   const scoped = ((contests ?? []) as TrackerContest[]).filter(
-    (c) => contestAccount(c.slug) === account
+    (c) => contestAccount(c) === account
   );
 
   let ok = 0;

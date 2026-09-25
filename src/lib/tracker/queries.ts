@@ -53,7 +53,7 @@ export async function loadTrackerAggregatesFast(supabase: SupabaseClient) {
         .from("tracker_subject_aggregates")
         .select("*")
         .order("subject_name"),
-      supabase.from("tracker_contests").select("slug"),
+      supabase.from("tracker_contests").select("slug, hr_account"),
     ]);
 
   const campusList = (campuses ?? []) as Campus[];
@@ -147,16 +147,21 @@ export async function loadTrackerAggregatesFast(supabase: SupabaseClient) {
   }
   campusAggregatesFast.sort((a, b) => a.campus.name.localeCompare(b.campus.name));
 
-  const slugs = (contestSlugs ?? []) as { slug: string }[];
+  const slugs = (contestSlugs ?? []) as {
+    slug: string;
+    hr_account: "101" | "301" | null;
+  }[];
   const accountCounts = HR_ACCOUNTS.map((account) => ({
     account,
-    contestCount: slugs.filter((c) => contestAccount(c.slug) === account).length,
+    contestCount: slugs.filter((c) => contestAccount(c) === account).length,
   }));
+  const unassignedCount = slugs.filter((c) => contestAccount(c) === null).length;
 
   return {
     campusAggregatesFast,
     subjectAggregatesFast,
     accountCounts,
+    unassignedCount,
   };
 }
 
@@ -379,7 +384,7 @@ export async function loadTrackerAggregates(supabase: SupabaseClient) {
 
   const accountCounts = HR_ACCOUNTS.map((account) => ({
     account,
-    contestCount: contestList.filter((c) => contestAccount(c.slug) === account)
+    contestCount: contestList.filter((c) => contestAccount(c) === account)
       .length,
   }));
 

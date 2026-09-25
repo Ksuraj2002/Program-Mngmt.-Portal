@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { refreshContest } from "@/lib/tracker/refresh";
+import { HR_ACCOUNTS, type HRAccount } from "@/lib/tracker/account";
 import type { TrackerContest } from "@/types/database";
 
 export async function fetchOneContest(formData: FormData) {
@@ -59,6 +60,7 @@ export async function updateContest(formData: FormData) {
   const displayName =
     String(formData.get("display_name") || "").trim() || null;
   const cutoffRaw = String(formData.get("cutoff") || "").trim();
+  const hrAccountRaw = String(formData.get("hr_account") || "").trim();
 
   if (!slug) {
     redirect(`${back}?error=${encodeURIComponent("Contest slug is required.")}`);
@@ -74,6 +76,17 @@ export async function updateContest(formData: FormData) {
     }
     cutoff = Number(cutoffRaw);
   }
+  let hrAccount: HRAccount | null = null;
+  if (hrAccountRaw) {
+    if (!HR_ACCOUNTS.includes(hrAccountRaw as HRAccount)) {
+      redirect(
+        `${back}?error=${encodeURIComponent(
+          `Unknown HackerRank account "${hrAccountRaw}".`
+        )}`
+      );
+    }
+    hrAccount = hrAccountRaw as HRAccount;
+  }
 
   const supabase = await createClient();
   const { data: contest, error } = await supabase
@@ -82,6 +95,7 @@ export async function updateContest(formData: FormData) {
       slug,
       display_name: displayName,
       lecture_cutoff_challenge_count: cutoff,
+      hr_account: hrAccount,
     })
     .eq("id", contestId)
     .select()

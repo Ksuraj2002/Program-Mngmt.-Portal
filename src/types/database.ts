@@ -8,6 +8,7 @@ export type TrackerContest = {
   slug: string;
   display_name: string | null;
   lecture_cutoff_challenge_count: number | null;
+  hr_account: "101" | "301" | null;
   last_fetched_at: string | null;
   created_at: string;
 };

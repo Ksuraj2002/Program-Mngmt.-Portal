@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
 import { loadContestMetrics } from "@/lib/tracker/queries";
+import { contestAccount, inferAccountFromSlug } from "@/lib/tracker/account";
 import type {
   Campus,
   Subject,
@@ -111,7 +112,29 @@ export default async function ContestDetailPage({
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           Slug: <span className="font-mono">{c.slug}</span> · Last fetched:{" "}
-          {formatTimestamp(c.last_fetched_at)} ·{" "}
+          {formatTimestamp(c.last_fetched_at)} · HR account:{" "}
+          {(() => {
+            const resolved = contestAccount(c);
+            if (!resolved)
+              return (
+                <span className="font-medium text-amber-700">
+                  unassigned (won&apos;t auto-refresh)
+                </span>
+              );
+            const isOverride = c.hr_account != null;
+            const inferred = inferAccountFromSlug(c.slug);
+            return (
+              <span className="font-medium text-slate-700">
+                {resolved}
+                {isOverride
+                  ? " (manual)"
+                  : inferred
+                  ? " (from slug)"
+                  : ""}
+              </span>
+            );
+          })()}{" "}
+          ·{" "}
           <Link
             href={`/tracker/contest/${c.id}/edit`}
             className="text-brand-600"

@@ -128,7 +128,7 @@ export async function loadDetailedRows(
             campus: campus.name,
             subject: subject.name,
             contest: contest.display_name || contest.slug,
-            account: contestAccount(contest.slug) ?? "",
+            account: contestAccount(contest) ?? "",
             rank: r.rank,
             username: r.hacker,
             score: r.score,
