@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
 import { PendingEntryCard } from "@/components/PendingEntryCard";
+import { countExpiredCookies } from "@/lib/tracker/credentials";
 import {
   approveEntry,
   markEntryDone,
@@ -43,10 +44,41 @@ export default async function DashboardPage() {
 
   const { data: pendingEntries } = await pendingQuery;
 
+  const cookieAlert =
+    profile.role === "admin" ? await countExpiredCookies() : null;
+  const needsAttention = cookieAlert
+    ? [...cookieAlert.expired, ...cookieAlert.missing]
+    : [];
+
   return (
     <>
       <TopNav profile={profile} />
       <main className="mx-auto max-w-5xl px-6 py-10">
+        {needsAttention.length > 0 && (
+          <div className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+            <div>
+              <p className="text-sm font-medium text-red-800">
+                HackerRank auto-refresh is paused for{" "}
+                {needsAttention.map((a) => `${a} account`).join(" and ")}.
+              </p>
+              <p className="mt-1 text-sm text-red-700">
+                {cookieAlert!.missing.length > 0 && cookieAlert!.expired.length > 0
+                  ? "One cookie is missing and another has expired. "
+                  : cookieAlert!.missing.length > 0
+                  ? "The stored cookie is missing. "
+                  : "The stored cookie has expired. "}
+                Paste a fresh <code>_hrank_session</code> cookie on the tracker
+                page to resume the daily refresh.
+              </p>
+            </div>
+            <Link
+              href="/tracker"
+              className="whitespace-nowrap rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+            >
+              Open tracker →
+            </Link>
+          </div>
+        )}
         <section>
           <div className="flex items-center justify-between">
             <div>

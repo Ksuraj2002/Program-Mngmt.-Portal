@@ -5,6 +5,17 @@
 const BASE = "https://www.hackerrank.com/rest/contests";
 const PAGE_SIZE = 100;
 
+// Thrown when HackerRank rejects the cookie (401/403). Callers can catch this
+// specifically to mark the stored cookie as expired.
+export class HackerRankAuthError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HackerRankAuthError";
+    this.status = status;
+  }
+}
+
 export type LeaderboardEntry = {
   rank?: number | null;
   hacker?: string | null;
@@ -34,6 +45,12 @@ async function fetchPaginated<T>(cookie: string, path: string): Promise<T[]> {
       cache: "no-store",
     });
     if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        throw new HackerRankAuthError(
+          resp.status,
+          `HackerRank ${path} rejected the session cookie (HTTP ${resp.status}). It has probably expired.`
+        );
+      }
       throw new Error(`HackerRank ${path} returned HTTP ${resp.status}`);
     }
     const payload = (await resp.json()) as {

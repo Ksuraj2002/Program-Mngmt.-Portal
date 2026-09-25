@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
-import { refreshContest } from "@/app/tracker/actions";
+import { refreshContest } from "@/lib/tracker/refresh";
 import type { TrackerContest } from "@/types/database";
 
 export async function fetchOneContest(formData: FormData) {

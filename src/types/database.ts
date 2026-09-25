@@ -30,6 +30,16 @@ export type TrackerStudent = {
   created_at: string;
 };
 
+export type TrackerHRCredential = {
+  account: string;
+  cookie_ciphertext: string;
+  last_refresh_ok_at: string | null;
+  last_refresh_error: string | null;
+  status: "active" | "expired";
+  updated_at: string;
+  updated_by: string | null;
+};
+
 export type TrackerLeaderboardSnapshot = {
   id: string;
   contest_id: string;
@@ -216,6 +226,23 @@ export type Database = {
             columns: ["subject_id"];
             isOneToOne: false;
             referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      tracker_hr_credentials: {
+        Row: TrackerHRCredential;
+        Insert: Partial<TrackerHRCredential> & {
+          account: string;
+          cookie_ciphertext: string;
+        };
+        Update: Partial<TrackerHRCredential>;
+        Relationships: [
+          {
+            foreignKeyName: "tracker_hr_credentials_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           }
         ];
