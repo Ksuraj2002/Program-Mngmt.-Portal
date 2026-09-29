@@ -5,6 +5,7 @@ import { TopNav } from "@/components/TopNav";
 import { loadTrackerAggregatesFast } from "@/lib/tracker/queries";
 import { listCredentialStatus } from "@/lib/tracker/credentials";
 import { PendingButton } from "@/components/PendingButton";
+import { TrackerCharts } from "@/components/TrackerCharts";
 import { refreshAccountNowAction, saveHrCookieAction } from "./actions";
 
 export default async function TrackerHomePage({
@@ -50,12 +51,20 @@ export default async function TrackerHomePage({
               .
             </p>
           </div>
-          <Link
-            href="/tracker/rollup"
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Full rollup →
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/tracker/import"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Import students
+            </Link>
+            <Link
+              href="/tracker/rollup"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Full rollup →
+            </Link>
+          </div>
         </div>
 
         {params.error && (
@@ -122,6 +131,11 @@ export default async function TrackerHomePage({
             </p>
           )}
         </section>
+
+        <TrackerCharts
+          campusRows={campusAggregatesFast}
+          subjectRows={subjectAggregatesFast}
+        />
 
         {campusAggregatesFast.length > 0 && (
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
