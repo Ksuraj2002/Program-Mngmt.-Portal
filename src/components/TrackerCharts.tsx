@@ -215,15 +215,11 @@ function CampusComparisonChart({ rows }: { rows: CampusAggregateRow[] }) {
   const data = rows;
   if (data.length === 0) return null;
 
-  const maxTop = Math.max(...data.map((r) => Number(r.top_score) || 0), 1);
-  const maxAvgScore = Math.max(...data.map((r) => Number(r.avg_score) || 0), 1);
-
   const metrics = [
     {
       key: "completion",
       label: "Avg % completion",
       color: BRAND,
-      value: (r: CampusAggregateRow) => r.avg_pct_completion,
       normalized: (r: CampusAggregateRow) =>
         Math.max(0, Math.min(100, r.avg_pct_completion)),
       display: (r: CampusAggregateRow) => `${r.avg_pct_completion}%`,
@@ -232,8 +228,6 @@ function CampusComparisonChart({ rows }: { rows: CampusAggregateRow[] }) {
       key: "participation",
       label: "Participation rate",
       color: EMERALD,
-      value: (r: CampusAggregateRow) =>
-        r.studentCount ? (r.participants / r.studentCount) * 100 : 0,
       normalized: (r: CampusAggregateRow) =>
         r.studentCount
           ? Math.max(0, Math.min(100, (r.participants / r.studentCount) * 100))
@@ -243,28 +237,10 @@ function CampusComparisonChart({ rows }: { rows: CampusAggregateRow[] }) {
           ? `${Math.round((r.participants / r.studentCount) * 100)}%`
           : "0%",
     },
-    {
-      key: "avg_score",
-      label: "Avg score (rel.)",
-      color: "#f59e0b",
-      value: (r: CampusAggregateRow) => Number(r.avg_score) || 0,
-      normalized: (r: CampusAggregateRow) =>
-        (Number(r.avg_score) / maxAvgScore) * 100,
-      display: (r: CampusAggregateRow) => String(r.avg_score),
-    },
-    {
-      key: "top",
-      label: "Top score (rel.)",
-      color: "#a855f7",
-      value: (r: CampusAggregateRow) => Number(r.top_score) || 0,
-      normalized: (r: CampusAggregateRow) =>
-        (Number(r.top_score) / maxTop) * 100,
-      display: (r: CampusAggregateRow) => String(r.top_score),
-    },
   ];
 
-  const groupPad = 24;
-  const barW = 14;
+  const groupPad = 32;
+  const barW = 26;
   const groupW = metrics.length * barW + groupPad;
   const chartH = 200;
   const paddingBottom = 60;
@@ -356,8 +332,6 @@ function ComparisonLegend() {
   const items = [
     { color: BRAND, label: "Avg % completion" },
     { color: EMERALD, label: "Participation rate" },
-    { color: "#f59e0b", label: "Avg score (rel.)" },
-    { color: "#a855f7", label: "Top score (rel.)" },
   ];
   return (
     <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
@@ -414,8 +388,8 @@ export function TrackerCharts({
               <ComparisonLegend />
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Each campus across four metrics. Score bars are normalized to the
-              highest campus (0–100).
+              How much of the material students are completing, and how many
+              are showing up. Both on a 0–100% scale.
             </p>
             <div className="mt-3 overflow-x-auto">
               <CampusComparisonChart rows={campusRows} />
