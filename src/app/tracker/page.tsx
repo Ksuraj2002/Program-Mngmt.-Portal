@@ -132,10 +132,7 @@ export default async function TrackerHomePage({
           )}
         </section>
 
-        <TrackerCharts
-          campusRows={campusAggregatesFast}
-          subjectRows={subjectAggregatesFast}
-        />
+        <TrackerCharts campusRows={campusAggregatesFast} />
 
         {campusAggregatesFast.length > 0 && (
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
