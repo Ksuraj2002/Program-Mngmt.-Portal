@@ -16,6 +16,12 @@ export function TopNav({ profile }: { profile: Profile }) {
           <Link href="/" className="text-slate-600 hover:text-brand-700">
             Campuses
           </Link>
+          <Link
+            href="/calendar"
+            className="text-slate-600 hover:text-brand-700"
+          >
+            Calendar
+          </Link>
           {profile.role === "admin" && (
             <>
               <Link
