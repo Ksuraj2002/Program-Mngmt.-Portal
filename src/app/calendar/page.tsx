@@ -2,7 +2,12 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/TopNav";
-import { TestCalendar, type CalendarTest } from "@/components/TestCalendar";
+import {
+  TestCalendar,
+  type CalendarTest,
+  type ManageableSubject,
+} from "@/components/TestCalendar";
+import { addTestOnDate } from "./actions";
 
 function parseMonthParam(raw: string | undefined): { year: number; month0: number } {
   const now = new Date();
@@ -16,29 +21,43 @@ function parseMonthParam(raw: string | undefined): { year: number; month0: numbe
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; error?: string }>;
 }) {
-  const { month } = await searchParams;
+  const { month, error } = await searchParams;
   const { year, month0 } = parseMonthParam(month);
 
   const supabase = await createClient();
-  const { profile } = await requireProfile();
+  const { userId, profile } = await requireProfile();
 
   const mm = String(month0 + 1).padStart(2, "0");
   const firstIso = `${year}-${mm}-01`;
   const lastDay = new Date(year, month0 + 1, 0).getDate();
   const lastIso = `${year}-${mm}-${String(lastDay).padStart(2, "0")}`;
+  const monthParam = `${year}-${mm}`;
 
-  const { data: rows } = await supabase
-    .from("entries")
-    .select(
-      "id, title, test_date, subject_id, subjects!inner(id, name, campus_id, campuses!inner(id, name))"
-    )
-    .eq("type", "test")
-    .not("test_date", "is", null)
-    .gte("test_date", firstIso)
-    .lte("test_date", lastIso)
-    .order("test_date", { ascending: true });
+  const [{ data: rows }, { data: allSubjects }, { data: mappings }] =
+    await Promise.all([
+      supabase
+        .from("entries")
+        .select(
+          "id, title, test_date, subject_id, subjects!inner(id, name, campus_id, campuses!inner(id, name))"
+        )
+        .eq("type", "test")
+        .not("test_date", "is", null)
+        .gte("test_date", firstIso)
+        .lte("test_date", lastIso)
+        .order("test_date", { ascending: true }),
+      supabase
+        .from("subjects")
+        .select("id, name, campus_id, campuses!inner(id, name)")
+        .order("name"),
+      profile.role === "admin"
+        ? Promise.resolve({ data: null })
+        : supabase
+            .from("faculty_subjects")
+            .select("subject_id")
+            .eq("faculty_id", userId),
+    ]);
 
   const tests: CalendarTest[] = ((rows || []) as unknown as Array<{
     id: string;
@@ -61,6 +80,31 @@ export default async function CalendarPage({
     campus_name: r.subjects.campuses.name,
   }));
 
+  const subjectsRaw = (allSubjects || []) as unknown as Array<{
+    id: string;
+    name: string;
+    campus_id: string;
+    campuses: { id: string; name: string };
+  }>;
+
+  let manageable: ManageableSubject[] = [];
+  if (profile.role === "admin") {
+    manageable = subjectsRaw.map((s) => ({
+      id: s.id,
+      name: s.name,
+      campus_name: s.campuses.name,
+    }));
+  } else {
+    const allowed = new Set((mappings || []).map((m) => m.subject_id));
+    manageable = subjectsRaw
+      .filter((s) => allowed.has(s.id))
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        campus_name: s.campuses.name,
+      }));
+  }
+
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
@@ -74,7 +118,7 @@ export default async function CalendarPage({
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               All scheduled tests across campuses and subjects. Click a day to
-              see what&apos;s on it.
+              see what&apos;s on it or add a new test.
             </p>
           </div>
           <Link
@@ -85,17 +129,21 @@ export default async function CalendarPage({
           </Link>
         </div>
 
+        {error && (
+          <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
         <TestCalendar
           year={year}
           month0={month0}
           todayIso={todayIso}
           tests={tests}
+          manageableSubjects={manageable}
+          monthParam={monthParam}
+          addTestOnDate={addTestOnDate}
         />
-
-        <p className="mt-6 text-xs text-slate-500">
-          Tests are scheduled from each subject&apos;s page — open a subject and
-          add a test entry with a test date to see it here.
-        </p>
       </main>
     </>
   );

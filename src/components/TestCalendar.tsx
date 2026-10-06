@@ -13,6 +13,12 @@ export type CalendarTest = {
   campus_name: string;
 };
 
+export type ManageableSubject = {
+  id: string;
+  name: string;
+  campus_name: string;
+};
+
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function monthLabel(year: number, month0: number) {
@@ -32,13 +38,20 @@ export function TestCalendar({
   month0,
   todayIso,
   tests,
+  manageableSubjects,
+  monthParam,
+  addTestOnDate,
 }: {
   year: number;
   month0: number;
   todayIso: string;
   tests: CalendarTest[];
+  manageableSubjects: ManageableSubject[];
+  monthParam: string;
+  addTestOnDate: (formData: FormData) => Promise<void> | void;
 }) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarTest[]>();
@@ -69,9 +82,15 @@ export function TestCalendar({
   while (cells.length % 7 !== 0) cells.push(null);
 
   const selectedTests = selectedDay ? byDay.get(selectedDay) || [] : [];
+  const canAdd = manageableSubjects.length > 0;
+
+  function handleDayClick(iso: string) {
+    setSelectedDay((s) => (s === iso ? null : iso));
+    setShowForm(false);
+  }
 
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <Link
@@ -115,9 +134,7 @@ export function TestCalendar({
               <button
                 key={cell.iso}
                 type="button"
-                onClick={() =>
-                  setSelectedDay((s) => (s === cell.iso ? null : cell.iso))
-                }
+                onClick={() => handleDayClick(cell.iso)}
                 className={`h-24 rounded-md border p-1.5 text-left transition ${
                   isSelected
                     ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500"
@@ -182,7 +199,7 @@ export function TestCalendar({
               : `${selectedTests.length} test${
                   selectedTests.length === 1 ? "" : "s"
                 } scheduled.`
-            : "Click a day to see the tests on it."}
+            : "Click a day to see tests or add a new one."}
         </p>
 
         <div className="mt-3 space-y-2">
@@ -199,6 +216,104 @@ export function TestCalendar({
             </Link>
           ))}
         </div>
+
+        {selectedDay && canAdd && !showForm && (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="mt-4 w-full rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Mark a test on this day
+          </button>
+        )}
+
+        {selectedDay && canAdd && showForm && (
+          <form
+            action={addTestOnDate}
+            className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3"
+          >
+            <input type="hidden" name="test_date" value={selectedDay} />
+            <input type="hidden" name="month" value={monthParam} />
+            <div>
+              <label className="block text-xs font-medium text-slate-700">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="subjectId"
+                required
+                defaultValue=""
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="" disabled>
+                  Select a subject…
+                </option>
+                {manageableSubjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.campus_name} · {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="e.g. Unit 3 test"
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700">
+                Due date (defaults to test date)
+              </label>
+              <input
+                type="date"
+                name="due_date"
+                defaultValue={selectedDay}
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700">
+                Max marks (optional)
+              </label>
+              <input
+                type="number"
+                name="max_marks"
+                min={0}
+                step="0.5"
+                placeholder="e.g. 100"
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                Mark test
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {selectedDay && !canAdd && (
+          <p className="mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            You&apos;re not mapped to any subject, so you can&apos;t mark tests
+            here. Ask an admin to assign you a subject.
+          </p>
+        )}
       </aside>
     </div>
   );
