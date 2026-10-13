@@ -12,6 +12,31 @@ import type {
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
+// Supabase/PostgREST caps a single response at 1000 rows by default, so a
+// plain .select() on tracker_leaderboard_snapshots or tracker_challenges
+// silently drops rows once either table grows past that cap. Pull everything
+// in explicit pages when the caller needs the full data set.
+const PAGE_SIZE = 1000;
+
+async function selectAll<T>(
+  build: () => {
+    range: (
+      from: number,
+      to: number
+    ) => Promise<{ data: T[] | null; error: unknown }>;
+  }
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // FAST PATH: read pre-aggregated per-subject stats straight out of the
 // tracker_subject_aggregates Postgres view. Used by the tracker landing page
@@ -255,27 +280,28 @@ export async function loadTrackerAggregates(supabase: SupabaseClient) {
     { data: campuses },
     { data: subjects },
     { data: contests },
-    { data: students },
-    { data: snapshots },
-    { data: challenges },
+    studentList,
+    snapshotList,
+    challengeList,
   ] = await Promise.all([
     supabase.from("campuses").select("*").order("name"),
     supabase.from("subjects").select("*").order("name"),
     supabase.from("tracker_contests").select("*"),
-    supabase.from("tracker_students").select("*"),
-    supabase
-      .from("tracker_leaderboard_snapshots")
-      .select("*")
-      .order("fetched_at", { ascending: false }),
-    supabase.from("tracker_challenges").select("*").order("sequence"),
+    selectAll<TrackerStudent>(() => supabase.from("tracker_students").select("*")),
+    selectAll<TrackerLeaderboardSnapshot>(() =>
+      supabase
+        .from("tracker_leaderboard_snapshots")
+        .select("*")
+        .order("fetched_at", { ascending: false })
+    ),
+    selectAll<TrackerChallenge>(() =>
+      supabase.from("tracker_challenges").select("*").order("sequence")
+    ),
   ]);
 
   const campusList = (campuses ?? []) as Campus[];
   const subjectList = (subjects ?? []) as Subject[];
   const contestList = (contests ?? []) as TrackerContest[];
-  const studentList = (students ?? []) as TrackerStudent[];
-  const snapshotList = (snapshots ?? []) as TrackerLeaderboardSnapshot[];
-  const challengeList = (challenges ?? []) as TrackerChallenge[];
 
   // Group snapshots by contest, keep only the latest fetch batch per contest.
   const snapshotsByContest = new Map<string, TrackerLeaderboardSnapshot[]>();
