@@ -288,15 +288,17 @@ export async function loadTrackerAggregates(supabase: SupabaseClient) {
     supabase.from("campuses").select("*").order("name"),
     supabase.from("subjects").select("*").order("name"),
     supabase.from("tracker_contests").select("*"),
-    selectAll<TrackerStudent>(() => supabase.from("tracker_students").select("*")),
+    selectAll<TrackerStudent>(() =>
+      supabase.from("tracker_students").select("*").order("id")
+    ),
+    // Paginate by primary key `id` for stable ordering across pages — see
+    // the matching note in loadDetailedRows (sorting by `fetched_at` ties
+    // reshuffles between .range() requests and drops rows).
     selectAll<TrackerLeaderboardSnapshot>(() =>
-      supabase
-        .from("tracker_leaderboard_snapshots")
-        .select("*")
-        .order("fetched_at", { ascending: false })
+      supabase.from("tracker_leaderboard_snapshots").select("*").order("id")
     ),
     selectAll<TrackerChallenge>(() =>
-      supabase.from("tracker_challenges").select("*").order("sequence")
+      supabase.from("tracker_challenges").select("*").order("id")
     ),
   ]);
 
@@ -312,7 +314,10 @@ export async function loadTrackerAggregates(supabase: SupabaseClient) {
     snapshotsByContest.set(s.contest_id, list);
   }
   for (const [cid, list] of snapshotsByContest.entries()) {
-    const latestAt = list[0]?.fetched_at ?? null;
+    let latestAt: string | null = null;
+    for (const s of list) {
+      if (!latestAt || s.fetched_at > latestAt) latestAt = s.fetched_at;
+    }
     snapshotsByContest.set(
       cid,
       latestAt ? list.filter((s) => s.fetched_at === latestAt) : []
