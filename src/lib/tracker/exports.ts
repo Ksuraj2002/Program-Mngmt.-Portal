@@ -17,17 +17,18 @@ type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 // explicit pages so cross-contest aggregates see the full data set.
 const PAGE_SIZE = 1000;
 
-async function selectAll<T>(
-  build: () => {
-    range: (
-      from: number,
-      to: number
-    ) => Promise<{ data: T[] | null; error: unknown }>;
-  }
-): Promise<T[]> {
+// `build` returns a Supabase query builder. We type it loosely because the
+// generated PostgrestFilterBuilder is thenable but not a full Promise, and
+// its awaited row type is table-specific — structurally matching it is more
+// trouble than it is worth for a tiny internal helper.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function selectAll<T>(build: () => any): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await build().range(from, from + PAGE_SIZE - 1);
+    const { data, error } = (await build().range(
+      from,
+      from + PAGE_SIZE - 1
+    )) as { data: T[] | null; error: unknown };
     if (error) throw error;
     const batch = data ?? [];
     out.push(...batch);
